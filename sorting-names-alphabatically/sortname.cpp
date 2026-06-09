@@ -1,6 +1,10 @@
 #include <iostream>
 #include <cstdint>
 #include <fstream>
+#include <string>
+
+#define RED 1ull
+#define BLACK 0ull
 
 /*
  * Node for the red-black tree:
@@ -8,40 +12,52 @@
  * Colour of the node will be tagged with
  * the parent pointer (last bit of the address)
 */
-class Node
+class alignas(8) Node
 {
     public:
-        Node* parent;
+        std::string name;   // Payload
         Node* left;
         Node* right;
 
-        Node(Node* p) : left(nullptr), right(nullptr)
-        {
-            // Adding the colour red to the parent pointer
-            uintptr_t parent_bits = reinterpret_cast<uintptr_t>(p) | 1;
-            parent = reinterpret_cast<Node*> (parent_bits);
-        }
+        // Contains the parent's address and the colour
+        Node* parent_and_colour;
 
-        Node* getParent()
-        {
-
-        }
-
-        void setParent()
-        {
-            
-        }
-
-        bool isRed()
-        {
-
-        }
-
-        void changeColour()
-        {
-
-        }
+        // Helper methods
+        Node(std::string n);
+        Node* getParent();
+        void setParent(Node* new_parent);
+        uintptr_t getColour();
+        void setColour(uintptr_t new_colour);
 };
+
+Node::Node(std::string n) : parent_and_colour(nullptr), left(nullptr), right(nullptr), name(n)
+{
+    // Colouring the node RED
+    parent_and_colour = reinterpret_cast<Node*> (RED);
+}
+
+Node* Node::getParent()
+{
+    uintptr_t clean_parent = reinterpret_cast<uintptr_t> (parent_and_colour) & ~(1ull);
+    return reinterpret_cast<Node*> (clean_parent);
+}
+
+void Node::setParent(Node* new_parent)
+{
+    uintptr_t tagged_parent = reinterpret_cast<uintptr_t> (new_parent) | getColour();
+    parent_and_colour = reinterpret_cast<Node*> (tagged_parent);
+}
+
+uintptr_t Node::getColour()
+{
+    return reinterpret_cast<uintptr_t> (parent_and_colour) & 1ull;
+}
+
+void Node::setColour(uintptr_t new_colour)
+{
+    uintptr_t parent = reinterpret_cast<uintptr_t> (getParent());
+    parent_and_colour = reinterpret_cast<Node*> (parent | new_colour);
+}
 
 int main(int argc, char* argv[])
 {
@@ -64,4 +80,6 @@ int main(int argc, char* argv[])
 
     // 26 pointers for 26 alphabet letters
     Node* list[26] {nullptr};
+
+
 }
