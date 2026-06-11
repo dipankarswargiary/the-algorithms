@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <fstream>
 #include <string>
+#include <cctype>
 
 #define RED 1ull
 #define BLACK 0ull
@@ -23,14 +24,15 @@ class alignas(8) Node
         Node* parent_and_colour;
 
         // Helper methods
-        Node(std::string n);
+        Node(const std::string& n);
         Node* getParent();
         void setParent(Node* new_parent);
         uintptr_t getColour();
         void setColour(uintptr_t new_colour);
+        bool isGreaterThan(Node& node);
 };
 
-Node::Node(std::string n) : parent_and_colour(nullptr), left(nullptr), right(nullptr), name(n)
+Node::Node(const std::string& n) : parent_and_colour(nullptr), left(nullptr), right(nullptr), name(n)
 {
     // Colouring the node RED
     parent_and_colour = reinterpret_cast<Node*> (RED);
@@ -59,6 +61,47 @@ void Node::setColour(uintptr_t new_colour)
     parent_and_colour = reinterpret_cast<Node*> (parent | new_colour);
 }
 
+bool Node::isGreaterThan(Node& node)
+{
+    return (name > node.name);
+}
+
+// This function will remove extra whitespaces and convert
+// the names into lower case for ease string comparison
+void reduceName(std::string& name)
+{
+    int writeIndex = 0;
+    bool needSpace = false;
+
+    for (int readIndex = 0; readIndex < name.size(); ++readIndex)
+    {
+        if (std::isspace(static_cast<unsigned char> (name[readIndex])))
+        {
+            if (writeIndex > 0) {
+                needSpace = true;
+            }
+        }
+        else
+        {
+            if(needSpace) {
+                name[writeIndex] = ' ';
+                ++writeIndex; 
+                needSpace = false;
+            }
+            name[writeIndex] = std::tolower(static_cast<unsigned char> (name[readIndex]));
+            ++writeIndex;
+        }
+    }
+
+    name.erase(writeIndex);
+}
+
+// TODO: Yet to implement the insert function
+void insert(const std::string& name, Node*& root)
+{
+    Node* node = new Node(name);
+}
+
 int main(int argc, char* argv[])
 {
     // Command validation
@@ -81,5 +124,21 @@ int main(int argc, char* argv[])
     // 26 pointers for 26 alphabet letters
     Node* list[26] {nullptr};
 
+    std::string name;
 
+    while (getline(inputFileObj, name))
+    {
+        reduceName(name);
+
+        if (!name.empty() && (name[0] - 97) < 0)
+        {
+            Node* root = list[name[0] - 97];
+            insert(name, root);
+        }
+    }
+
+    // TODO: write the sorted names into a file
+    
+    inputFileObj.close();
+    return 0;
 }
