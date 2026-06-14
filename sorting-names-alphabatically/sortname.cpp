@@ -12,16 +12,21 @@
  * 
  * Colour of the node will be tagged with
  * the parent pointer (last bit of the address)
-*/
+ * 
+ * (alignas(8) guarantees the memory address is
+ * multiple of 8 - which makes the address's last
+ * bits 000 - which makes pointer tagging possible)
+ */// alignas(8) guarantees the memory address is multiple of 8 
 class alignas(8) Node
 {
+    private:
+        // Contains the parent's address and the colour
+        Node* parent_and_colour;
+
     public:
         std::string name;   // Payload
         Node* left;
         Node* right;
-
-        // Contains the parent's address and the colour
-        Node* parent_and_colour;
 
         // Helper methods
         Node(const std::string& n);
@@ -29,14 +34,14 @@ class alignas(8) Node
         void setParent(Node* new_parent);
         uintptr_t getColour();
         void setColour(uintptr_t new_colour);
-        bool isGreaterThan(Node& node);
+        bool isGreaterThan(const Node& node) const;
 };
 
-Node::Node(const std::string& n) : parent_and_colour(nullptr), left(nullptr), right(nullptr), name(n)
-{
-    // Colouring the node RED
-    parent_and_colour = reinterpret_cast<Node*> (RED);
-}
+// By default a node is created black
+Node::Node(const std::string& n) : parent_and_colour(nullptr),
+                                   left(nullptr),
+                                   right(nullptr),
+                                   name(n) {}
 
 Node* Node::getParent()
 {
@@ -61,10 +66,171 @@ void Node::setColour(uintptr_t new_colour)
     parent_and_colour = reinterpret_cast<Node*> (parent | new_colour);
 }
 
-bool Node::isGreaterThan(Node& node)
+bool Node::isGreaterThan(const Node& node) const
 {
     return (name > node.name);
 }
+
+
+// The tree class
+class RedBlackTree
+{
+    public:
+        Node* root;
+        Node* NIL;
+
+        RedBlackTree();
+        void insert(const std::string& name);
+        void insertFixup(Node* z);
+
+    private:
+        void leftRotate(Node* x);
+        void rightRotate(Node* x);
+};
+
+RedBlackTree::RedBlackTree() : NIL(new Node(""))
+{
+    root = NIL;
+}
+
+void RedBlackTree::insert(const std::string& name)
+{
+    Node* x {root};
+    Node* y {NIL};
+    Node* z = new Node(name);
+    
+    while (x != NIL)
+    {
+        y = x;
+        if (x->isGreaterThan(*z))
+            x = x->left;
+        else
+            x = x->right;
+    }
+    
+    z->setParent(y);
+    if (y == NIL)
+        root = z;
+    else if (y->isGreaterThan(*z))
+        y->left = z;
+    else
+        y->right = z;
+    
+    z->left = NIL;
+    z->right = NIL;
+    z->setColour(RED);
+    insertFixup(z);
+}
+
+void RedBlackTree::insertFixup(Node* z)
+{
+    while (z->getParent()->getColour() == RED)
+    {
+        Node* parent = z->getParent();
+        Node* grandParent = parent->getParent();
+
+        if (parent == grandParent->left)
+        {
+            Node* uncle = grandParent->right;
+
+            if (uncle->getColour() == RED)
+            {
+                parent->setColour(BLACK);
+                uncle->setColour(BLACK);
+                grandParent->setColour(RED);
+                z = grandParent;
+            }
+            else
+            {
+                // Uncle BLACK and Triangle
+                if (z == parent->right)
+                {
+                    z = parent;
+                    leftRotate(z);
+                }
+                
+                parent->setColour(BLACK);
+                grandParent->setColour(RED);
+                rightRotate(grandParent);
+            }
+        }
+        else
+        {
+            Node* uncle = parent->left;
+            
+            if (uncle->getColour() == RED)
+            {
+                parent->setColour(BLACK);
+                grandParent->setColour(RED);
+                uncle->setColour(BLACK);
+                z = grandParent;
+            }
+            else
+            {
+                // Uncle is BLACK and forms a triangle
+                if (z == parent->left)
+                {
+                    z = parent;
+                    rightRotate(z);
+                }
+
+                parent->setColour(BLACK);
+                grandParent->setColour(RED);
+                leftRotate(grandParent);
+            }
+        }
+    }
+
+    // Recolouring the root in case it become RED
+    root->setColour(BLACK);
+}
+
+void RedBlackTree::leftRotate(Node* x)
+{
+    Node* y = x->right;
+
+    x->right = y->left;
+    if (y->left != NIL)
+        y->left->setParent(x);
+    
+    if (x->getParent() == NIL)
+    {
+        root = y;
+        y->setParent(NIL);
+    }
+    else if(x == x->getParent()->right)
+        x->getParent()->right = y;
+    else
+        x->getParent()->left = y;
+    
+    y->setParent(x->getParent());
+    y->left = x;
+    x->setParent(y);
+}
+
+void RedBlackTree::rightRotate(Node* x)
+{
+    Node* y = x->left;
+
+    x->left = y->right;
+    if (y->right != NIL)
+        y->right->setParent(x);
+    
+    if (x->getParent() == NIL)
+    {
+        root = y;
+        y->setParent(NIL);
+    }
+    else if(x == x->getParent()->right)
+        x->getParent()->right = y;
+    else
+        x->getParent()->left = y;
+    
+    y->setParent(x->getParent());
+    y->right = x;
+    x->setParent(y);
+}
+
 
 // This function will remove extra whitespaces and convert
 // the names into lower case for ease string comparison
@@ -77,13 +243,13 @@ void reduceName(std::string& name)
     {
         if (std::isspace(static_cast<unsigned char> (name[readIndex])))
         {
-            if (writeIndex > 0) {
+            if (writeIndex > 0)
                 needSpace = true;
-            }
         }
         else
         {
-            if(needSpace) {
+            if(needSpace)
+            {
                 name[writeIndex] = ' ';
                 ++writeIndex; 
                 needSpace = false;
@@ -94,12 +260,6 @@ void reduceName(std::string& name)
     }
 
     name.erase(writeIndex);
-}
-
-// TODO: Yet to implement the insert function
-void insert(const std::string& name, Node*& root)
-{
-    Node* node = new Node(name);
 }
 
 int main(int argc, char* argv[])
@@ -122,7 +282,7 @@ int main(int argc, char* argv[])
     }
 
     // 26 pointers for 26 alphabet letters
-    Node* list[26] {nullptr};
+    RedBlackTree* list[26] {nullptr};
 
     std::string name;
 
@@ -130,10 +290,13 @@ int main(int argc, char* argv[])
     {
         reduceName(name);
 
-        if (!name.empty() && (name[0] - 97) < 0)
+        if (!name.empty() && std::islower(name[0]))
         {
-            Node* root = list[name[0] - 97];
-            insert(name, root);
+            if (list[name[0] - 97] == nullptr)
+                list[name[0] - 97] = new RedBlackTree();
+            
+            RedBlackTree* tree = list[name[0] - 97];
+            tree->insert(name);
         }
     }
 
