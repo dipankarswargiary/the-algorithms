@@ -330,7 +330,7 @@ int main(int argc, char* argv[])
     std::string fileExtension {};
     int i {};
     for (i = inputFileName.size() - 1; (inputFileName[i] != '.') && (i >=0); --i)
-        fileExtension = fileExtension + inputFileName[i];
+        fileExtension = inputFileName[i] + fileExtension;
     
     fileExtension = '.' + fileExtension;
     if (i < 0)
