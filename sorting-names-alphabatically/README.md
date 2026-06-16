@@ -16,8 +16,8 @@ So here it is.
   in the same directory where the binary is located.
 
 - Used an array of length 26, each index representing
-  a letter from the alphabet (it is bassically working
-  as an ordered map).
+  a letter from the alphabet (each alphabet will have
+  its own Red-Black tree for sorting).
 
 - I have implemented red-black tree from scratch to
   sort the names starting with the same letters.

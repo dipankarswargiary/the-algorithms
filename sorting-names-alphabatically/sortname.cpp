@@ -38,10 +38,11 @@ class alignas(8) Node
 };
 
 // By default a node is created black
-Node::Node(const std::string& n) : parent_and_colour(nullptr),
-                                   left(nullptr),
-                                   right(nullptr),
-                                   name(n) {}
+Node::Node(const std::string& n)
+    : parent_and_colour(nullptr),
+    left(nullptr),
+    right(nullptr),
+    name(n) {}
 
 Node* Node::getParent()
 {
@@ -262,6 +263,31 @@ void reduceName(std::string& name)
     name.erase(writeIndex);
 }
 
+void capitalizeName(std::string& name)
+{
+    name[0] = std::toupper(name[0]);
+    for (int i = 1; i < name.size(); ++i)
+    {
+        if (name[i] == ' ' && name[i+1] != ' ')
+        {
+            name[i+1] = std::toupper(name[i+1]);
+            ++i;
+        }
+    }
+}
+
+void traverseAndWrite(std::ofstream& fobj, RedBlackTree& tree, Node& node)
+{
+    if (node.left != tree.NIL)
+        traverseAndWrite(fobj, tree, *node.left);
+
+    capitalizeName(node.name);
+    fobj << node.name + "\n";
+
+    if (node.right != tree.NIL)
+        traverseAndWrite(fobj, tree, *node.right);
+}
+
 int main(int argc, char* argv[])
 {
     // Command validation
@@ -299,9 +325,37 @@ int main(int argc, char* argv[])
             tree->insert(name);
         }
     }
-
-    // TODO: write the sorted names into a file
-    
     inputFileObj.close();
+
+    std::string fileExtension {};
+    int i {};
+    for (i = inputFileName.size() - 1; (inputFileName[i] != '.') && (i >=0); --i)
+        fileExtension = fileExtension + inputFileName[i];
+    
+    fileExtension = '.' + fileExtension;
+    if (i < 0)
+        fileExtension = "";
+
+    std::string outputFileName = inputFileName.substr(0, inputFileName.size() - fileExtension.size()) + "_sorted" + fileExtension;
+    std::ofstream outputFileObj(outputFileName, std::ios::out | std::ios::trunc);
+
+    if (!outputFileObj.is_open())
+    {
+        std::cerr << "Error: Failed to write the sorted data in a file!" << std::endl;
+        return 1;
+    }
+
+    for (int i = 0; i < 26; ++i)
+    {
+        if (list[i] != nullptr)
+        {
+            RedBlackTree* tree = list[i];
+            traverseAndWrite(outputFileObj, *tree, *tree->root);
+        }
+    }
+
+    std::cout << "Success! Sorted file generated as: " << outputFileName << std::endl;
+
+    outputFileObj.close();
     return 0;
 }
